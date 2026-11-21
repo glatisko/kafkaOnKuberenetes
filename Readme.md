@@ -94,7 +94,7 @@ pod "kafka-0" deleted
 
 ### Listeners and advertised listeners
 
-gadg
+
 
 
 
