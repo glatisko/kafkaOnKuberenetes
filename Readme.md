@@ -318,6 +318,126 @@ spec:
 
 # KEEPING APACHE KAFKA ON KUBERNETES HEALTHY
 
+## Liveness Probe
+kubectl get nodes
+kubectl get service
+kubectl get sts
+kubectl appy -f statefulset-zookeeper.yaml
+kubectl get nodes -w
+
+1) add liveness probe to statefulset on the fly!!
+kubectl edit statefulset zookeeper
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  serviceName: "zookeeper"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: debezium/zookeeper
+        ports:
+        - containerPort: 2181
+          name: client
+        livenessProbe:
+          failureThreshold: 1
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: client
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 1
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: client
+          timeoutSeconds: 1
+        command: ["/bin/sh"]
+        args: ["-c", "SERVER_ID=${POD_NAME##*-} /docker-entrypoint.sh start"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+2) kubectl get nodes -w
+3) kubectl describe pod zookeeper-0
+
+## Readiness Probe
+Tells when a pod is ready to start receiving requests
+Also used for delayed dependency deployments (e.g zookeeper first before kafka)
+
+
+1) start zookeeper headless service
+kubectl apply -f headless-service-zookeeper.yaml
+
+2) start just one kafka broker stateful set
+kubectl appy -f statefulset-zookeeper.yaml
+
+3) check log
+kubectl logs kafka-0
+
+4) Delete zookeeper pod:
+kubectl delete pod zookeeper-0
+
+
+# APACHE KAFKA ON KUBERNETES IN PRODUCTION
+
+## High Availability
+Kubernetes Cluster -> Nodes (servers/VMs) -> Pods (kafka brokers)
+Worker Nodes (Kafka) | Master Node
+
+## Automation for deploying Apache Kafka on Kubernetes
+0) custom scripts
+1) Helm - package manager for kubernetes (packages scripts) (configuration replacements)
+2) Kubernetes Operator - software extension that manages applications and their components
+
+## Kubernated operator - Kafka Management Tasks 
+1) managing topics
+2) handling credentials
+3) rolling updates
+4) deployment - starting zookeeper/kafka connect/MirrorMaker 2
+
+
+## Deploying Apache Kafka with Strimzi Operators
+1) kubectl get nodes 
+docker-desktop
+2) increase docker desktop mem to 4GB
+3) create namespace
+kubectl create namespace kafka
+4) kubectl get namespace
+5) kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
+6) check strimzi operator pod is running:
+kubectl get pods -w -n kafka
+7) create kafka instance pod
+kubectl apply -f https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml -n kafka
+8) kubectl get kafka -n kafka
+9) get pod info:
+kubectl get kafka my-cluster -n kafka -oyaml
+10) check deployed pods:
+kubectl get pods -n kafka
+kubectl get service
+11) To run producer/consumer -need to exec into kafka pod
+kubectl exec -it my-cluster-kafka-0 -n kafka --/bin/bash
+
+12) kubectl get kafkatopic -n kafka
+
+
+
+
+
 
 
 
